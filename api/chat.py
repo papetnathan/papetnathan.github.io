@@ -1,11 +1,7 @@
 """
 api/chat.py  —  Vercel Serverless Function (Python)
 ────────────────────────────────────────────────────
-Pipeline RAG :
-  1. Embed la question de l'utilisateur (OpenAI text-embedding-3-small)
-  2. Cosine similarity avec les chunks pré-calculés (numpy, chargés en mémoire)
-  3. Récupère les top-k chunks les plus pertinents
-  4. Construit un prompt augmenté et appelle gpt-4o-mini
+Pipeline RAG + logging des questions dans Supabase.
 """
 
 from __future__ import annotations
@@ -18,59 +14,52 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import httpx
 from openai import OpenAI
 
-# ── Config ─────────────────────────────────────────────────────────────────────
+# ── Config ──────────────────────────────────────────────────────────────────
 EMBEDDING_MODEL  = "text-embedding-3-small"
 CHAT_MODEL       = "gpt-4o-mini"
-TOP_K            = 3          # nombre de chunks récupérés
+TOP_K            = 3
 MAX_TOKENS       = 350
 TEMPERATURE      = 0.65
-MAX_HISTORY      = 6          # messages max gardés en contexte
-# ───────────────────────────────────────────────────────────────────────────────
+MAX_HISTORY      = 6
+# ────────────────────────────────────────────────────────────────────────────
 
-# Chemin vers les embeddings pré-calculés
-# En serverless Vercel, __file__ pointe vers api/chat.py
-_BASE_DIR        = Path(__file__).parent.parent
-EMBEDDINGS_PATH  = _BASE_DIR / "knowledge" / "embeddings.json"
+_BASE_DIR       = Path(__file__).parent.parent
+EMBEDDINGS_PATH = _BASE_DIR / "knowledge" / "embeddings.json"
 
 
-# ── Chargement des embeddings (une fois au cold start) ──────────────────────
+# ── Chargement des embeddings ───────────────────────────────────────────────
 def _load_embeddings() -> tuple[list[str], np.ndarray]:
-    """Charge le fichier embeddings.json et retourne (textes, matrice numpy)."""
-    data = json.loads(EMBEDDINGS_PATH.read_text(encoding="utf-8"))
-    chunks   = data["chunks"]
-    texts    = [c["text"] for c in chunks]
-    matrix   = np.array([c["embedding"] for c in chunks], dtype=np.float32)
-    # Normalise les vecteurs ligne par ligne (pour cosine similarity = dot product)
-    norms    = np.linalg.norm(matrix, axis=1, keepdims=True)
-    matrix   = matrix / np.clip(norms, 1e-10, None)
+    data   = json.loads(EMBEDDINGS_PATH.read_text(encoding="utf-8"))
+    chunks = data["chunks"]
+    texts  = [c["text"] for c in chunks]
+    matrix = np.array([c["embedding"] for c in chunks], dtype=np.float32)
+    norms  = np.linalg.norm(matrix, axis=1, keepdims=True)
+    matrix = matrix / np.clip(norms, 1e-10, None)
     return texts, matrix
 
 
-# Chargement au démarrage du worker (mis en cache entre les requêtes tièdes)
 try:
     CHUNK_TEXTS, CHUNK_MATRIX = _load_embeddings()
-    print(f"[RAG] {len(CHUNK_TEXTS)} chunks chargés ({CHUNK_MATRIX.shape[1]} dims)", file=sys.stderr)
+    print(f"[RAG] {len(CHUNK_TEXTS)} chunks chargés", file=sys.stderr)
 except Exception as e:
     print(f"[RAG] ERREUR chargement embeddings : {e}", file=sys.stderr)
     CHUNK_TEXTS, CHUNK_MATRIX = [], np.array([])
 
 
 # ── Fonctions RAG ────────────────────────────────────────────────────────────
-
 def embed_query(query: str, client: OpenAI) -> np.ndarray:
-    """Retourne le vecteur normalisé de la query."""
     response = client.embeddings.create(model=EMBEDDING_MODEL, input=[query])
     vec = np.array(response.data[0].embedding, dtype=np.float32)
     return vec / np.linalg.norm(vec)
 
 
 def retrieve(query_vec: np.ndarray, top_k: int = TOP_K) -> list[str]:
-    """Cosine similarity → top-k chunks."""
     if CHUNK_MATRIX.size == 0:
         return []
-    scores  = CHUNK_MATRIX @ query_vec          # dot product = cosine (vecteurs normalisés)
+    scores  = CHUNK_MATRIX @ query_vec
     indices = np.argsort(scores)[::-1][:top_k]
     return [CHUNK_TEXTS[i] for i in indices]
 
@@ -91,12 +80,44 @@ RÈGLES :
 - Si la réponse n'est pas dans le contexte, dis-le honnêtement et invite à contacter Nathan par email : nathan.papet@icloud.com
 - Ne jamais inventer de diplômes, salaires ou informations absentes du contexte.
 - Sois concis (3-4 phrases max) sauf si une explication détaillée est demandée.
-- N'hésites pas à donner des petites anecdotes ou détails personnels pour rendre les réponses plus humaines et engageantes.
 """
 
 
-# ── Handler Vercel ───────────────────────────────────────────────────────────
+# ── Logging Supabase ─────────────────────────────────────────────────────────
+def log_to_supabase(question: str, answer: str) -> None:
+    """
+    Insère la question et la réponse dans la table recruiter_questions.
+    Silencieux en cas d'erreur — on ne veut pas bloquer le chat si Supabase est indisponible.
+    """
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_SERVICE_KEY")
 
+    if not url or not key:
+        print("[Supabase] Variables manquantes, log ignoré.", file=sys.stderr)
+        return
+
+    try:
+        endpoint = f"{url}/rest/v1/recruiter_questions"
+        headers  = {
+            "apikey":        key,
+            "Authorization": f"Bearer {key}",
+            "Content-Type":  "application/json",
+            "Prefer":        "return=minimal",
+        }
+        response = httpx.post(
+            endpoint,
+            headers=headers,
+            json={"question": question, "answer": answer},
+            timeout=5.0,
+        )
+        if response.status_code not in (200, 201):
+            print(f"[Supabase] Erreur {response.status_code}: {response.text}", file=sys.stderr)
+
+    except Exception as e:
+        print(f"[Supabase] Exception : {e}", file=sys.stderr)
+
+
+# ── Handler Vercel ───────────────────────────────────────────────────────────
 class handler(BaseHTTPRequestHandler):
 
     def _send_json(self, status: int, payload: dict[str, Any]) -> None:
@@ -129,7 +150,6 @@ class handler(BaseHTTPRequestHandler):
             self._send_json(400, {"error": "messages requis"})
             return
 
-        # Dernière question de l'utilisateur
         last_user_msg = next(
             (m["content"] for m in reversed(messages) if m.get("role") == "user"),
             None,
@@ -146,16 +166,16 @@ class handler(BaseHTTPRequestHandler):
         client = OpenAI(api_key=api_key)
 
         try:
-            # ── 1. Embed la question ──────────────────────────────────────────
-            query_vec = embed_query(last_user_msg, client)
+            # 1. Embed la question
+            query_vec  = embed_query(last_user_msg, client)
 
-            # ── 2. Retrieval ─────────────────────────────────────────────────
+            # 2. Retrieve les chunks pertinents
             top_chunks = retrieve(query_vec, top_k=TOP_K)
 
-            # ── 3. Augmented prompt ──────────────────────────────────────────
+            # 3. Prompt augmenté
             system_prompt = build_system_prompt(top_chunks)
 
-            # ── 4. Appel LLM ─────────────────────────────────────────────────
+            # 4. Appel LLM
             recent_history = messages[-MAX_HISTORY:]
             response = client.chat.completions.create(
                 model=CHAT_MODEL,
@@ -166,14 +186,16 @@ class handler(BaseHTTPRequestHandler):
                 max_tokens=MAX_TOKENS,
                 temperature=TEMPERATURE,
             )
-
             reply = response.choices[0].message.content
+
+            # 5. Log dans Supabase (non-bloquant en cas d'erreur)
+            log_to_supabase(question=last_user_msg, answer=reply)
+
             self._send_json(200, {"reply": reply})
 
         except Exception as e:
             print(f"[RAG] Erreur pipeline : {e}", file=sys.stderr)
             self._send_json(500, {"error": "Erreur interne du pipeline RAG"})
 
-    # Silence les logs HTTP de BaseHTTPRequestHandler en prod
     def log_message(self, format: str, *args: Any) -> None:
         print(f"[{self.address_string()}] {format % args}", file=sys.stderr)
