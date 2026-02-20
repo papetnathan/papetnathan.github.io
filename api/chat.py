@@ -91,6 +91,7 @@ RÈGLES :
 - Si la réponse n'est pas dans le contexte, dis-le honnêtement et invite à contacter Nathan par email : nathan.papet@icloud.com
 - Ne jamais inventer de diplômes, salaires ou informations absentes du contexte.
 - Sois concis (3-4 phrases max) sauf si une explication détaillée est demandée.
+- N'hésites pas à donner des petites anecdotes ou détails personnels pour rendre les réponses plus humaines et engageantes.
 """
 
 
