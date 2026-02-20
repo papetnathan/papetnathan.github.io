@@ -24,6 +24,63 @@
   .btn-contact { background:var(--black); color:#fff !important; padding:10px 22px; border-radius:8px; font-weight:600 !important; font-size:0.9rem !important; transition:opacity 0.2s,transform 0.15s !important; }
   .btn-contact:hover { opacity:0.85; transform:translateY(-1px); }
 
+    /* Chat IA — lien mis en avant dans la nav */
+  .nav-links a[href="#chat-section"] {
+    color: var(--teal);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .nav-links a[href="#chat-section"]:hover { color: var(--teal); opacity: 0.75; }
+  .nav-links a[href="#chat-section"]::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--teal);
+    animation: statusPulse 2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  .nav-links a[href="#chat-section"]::after { display: none; }
+
+  /* FLOATING CHAT BUTTON — mobile only */
+  .fab-chat {
+    display: none;
+  }
+  @media (max-width: 768px) {
+    .fab-chat {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: fixed;
+      bottom: 22px;
+      right: 18px;
+      z-index: 200;
+      background: var(--black);
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      padding: 11px 16px 11px 13px;
+      gap: 7px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.22);
+      text-decoration: none;
+      opacity: 0.93;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .fab-chat:hover, .fab-chat:active { opacity: 1; transform: translateY(-2px); }
+    .fab-chat-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--teal);
+      flex-shrink: 0;
+      animation: statusPulse 2s ease-in-out infinite;
+    }
+  }
+
   /* HAMBURGER */
   .hamburger { display:none; flex-direction:column; justify-content:center; gap:5px; width:40px; height:40px; background:none; border:none; cursor:pointer; padding:4px; border-radius:8px; transition:background 0.2s; z-index:200; }
   .hamburger:hover { background:var(--light-gray); }
@@ -413,6 +470,11 @@
 
   </div>
 </section>
+
+<a href="#chat-section" class="fab-chat" aria-label="Aller au chat IA">
+  <span class="fab-chat-dot"></span>
+  Chat IA
+</a>
 
 <footer id="contact">© 2025 Nathan Papet — Fait avec passion</footer>
 
