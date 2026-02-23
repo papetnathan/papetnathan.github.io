@@ -221,7 +221,8 @@
   #chat-section { padding:40px 48px 80px; max-width:1000px; margin:0 auto; }
 
   .chat-bg {
-    background: var(--black);
+    background: #f0feff;
+    border: 1.5px solid rgba(34,211,238,0.2);
     border-radius: 24px;
     padding: 52px 48px;
     display: grid;
@@ -231,21 +232,21 @@
     position: relative;
     overflow: hidden;
   }
-  .chat-bg::before { content:''; position:absolute; top:-80px; right:-80px; width:360px; height:360px; background:radial-gradient(circle,rgba(34,211,238,0.13) 0%,transparent 65%); pointer-events:none; }
-  .chat-bg::after  { content:''; position:absolute; bottom:-60px; left:15%; width:220px; height:220px; background:radial-gradient(circle,rgba(34,211,238,0.07) 0%,transparent 65%); pointer-events:none; }
+  .chat-bg::before { content:''; position:absolute; top:-80px; right:-80px; width:360px; height:360px; background:radial-gradient(circle,rgba(34,211,238,0.15) 0%,transparent 65%); pointer-events:none; }
+  .chat-bg::after  { content:''; position:absolute; bottom:-60px; left:15%; width:220px; height:220px; background:radial-gradient(circle,rgba(34,211,238,0.08) 0%,transparent 65%); pointer-events:none; }
 
   .chat-left { position:relative; z-index:1; }
-  .chat-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(34,211,238,0.12); border:1px solid rgba(34,211,238,0.28); border-radius:20px; padding:5px 14px; font-size:0.72rem; font-weight:600; color:var(--teal); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:22px; }
+  .chat-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(34,211,238,0.12); border:1px solid rgba(34,211,238,0.3); border-radius:20px; padding:5px 14px; font-size:0.72rem; font-weight:600; color:#0e7490; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:22px; }
   .badge-dot { width:6px; height:6px; border-radius:50%; background:var(--teal); animation:statusPulse 2s ease-in-out infinite; }
   @keyframes statusPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
-  .chat-title { font-size:clamp(1.55rem,2.8vw,2rem); font-weight:800; letter-spacing:-0.5px; color:#fff; line-height:1.2; margin-bottom:16px; }
+  .chat-title { font-size:clamp(1.55rem,2.8vw,2rem); font-weight:800; letter-spacing:-0.5px; color:var(--black); line-height:1.2; margin-bottom:16px; }
   .chat-title span { color:var(--teal); }
-  .chat-desc { color:#9ca3af; font-size:0.9rem; line-height:1.72; margin-bottom:28px; }
+  .chat-desc { color:var(--gray); font-size:0.9rem; line-height:1.72; margin-bottom:28px; }
   .chat-stack { display:flex; flex-wrap:wrap; gap:8px; }
-  .stack-tag { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.11); border-radius:6px; padding:4px 11px; font-size:0.74rem; font-weight:500; color:#d1d5db; font-family:'Courier New',monospace; }
+  .stack-tag { background:rgba(34,211,238,0.08); border:1px solid rgba(34,211,238,0.22); border-radius:6px; padding:4px 11px; font-size:0.74rem; font-weight:500; color:#0e7490; font-family:'Courier New',monospace; }
 
   .chat-right { position:relative; z-index:1; }
-  .chat-window { background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 28px 70px rgba(0,0,0,0.45); display:flex; flex-direction:column; height:420px; }
+  .chat-window { background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 12px 40px rgba(34,211,238,0.12), 0 2px 8px rgba(0,0,0,0.06); border:1px solid rgba(34,211,238,0.15); display:flex; flex-direction:column; height:420px; }
 
   .cw-header { display:flex; align-items:center; gap:10px; padding:13px 17px; background:#fff; border-bottom:1px solid var(--border); flex-shrink:0; }
   .cw-avatar { width:32px; height:32px; border-radius:50%; background:var(--black); display:flex; align-items:center; justify-content:center; font-size:0.82rem; font-weight:800; color:var(--teal); flex-shrink:0; }
@@ -362,7 +363,7 @@
   }
 
   .modal-screenshot {
-    background: #0f0f0f;
+    background: #f3f4f6;
     display: flex; align-items: center; justify-content: center;
     padding: 28px 22px;
     overflow: hidden;
@@ -824,7 +825,7 @@
             conversationHistory.push({ role: 'assistant', content: reply });
     } catch {
       hideTyping();
-      addMessage('bot', "Oups, une erreur s'est produite. R&#233;essayez dans un instant.");
+      addMessage('bot', "Oups, une erreur s'est produite. Réessayez dans un instant.");
     } finally {
       cwSend.disabled = false; cwInput.disabled = false;
     }
